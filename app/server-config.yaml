@@ -12,7 +12,7 @@ endpoints:
     data_logging:
       pipeline_inputs:
         - func: roboflow-logger.py:save_as_img
-          frequency: 1
+          frequency: 100
           target_loggers:
             - custom_logger
     
