@@ -1,0 +1,5 @@
+yolov5_runs/*
+env/*
+data/*
+__pycache__
+*.tar.gz
