@@ -24,4 +24,4 @@ for image_path in paths:
       files=[('request', open(image_path, 'rb'))]
     )
     print(resp)
-    time.sleep(0.25)
+    time.sleep(1)
