@@ -1,6 +1,10 @@
-yolov5_runs/*
-env/*
-data/*
+
 __pycache__
-*.tar.gz
+env
 .ipynb_checkpoints
+train
+test
+valid
+README.dataset.txt
+README.roboflow.txt
+data.yaml
