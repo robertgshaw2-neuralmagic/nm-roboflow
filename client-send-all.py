@@ -1,4 +1,4 @@
-import requests, json, os, time
+import requests, os, time
 
 # the dataset we downloaded had 3 subsets in 3 folders
 paths = []
