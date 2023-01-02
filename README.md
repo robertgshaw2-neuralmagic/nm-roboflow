@@ -20,7 +20,7 @@ that adapt to the data your model sees in production.
 The workflow looks like this:
 
 <p align="center">
-    <img width=50% src="continual-learning.png">
+    <img width=50% src="images/continual-learning.png">
 </p>
 
 ## **Tutorial Overview**
