@@ -38,27 +38,27 @@ There are 5 steps:
 Run the following to install the packages needed for the Tutorial:
 
 ```bash
-pip install deepsparse[server,yolo,onnx-runtime]
+pip install deepsparse[server,yolo,onnxruntime]
 pip install requests pillow requests-toolbelt
 ```
 
 ## **Step 1: Deploy YOLOv5-s with DeepSparse**
 
 DeepSparse is a CPU inference runtime which achieves GPU-class performance on inference-optimized sparse models.
-In the object detection domain, Neural Magic has open-sourced pre-sparsified versions of YOLOv5 models, making it easy
-to combine the performance of hardware accelerators with the simplicity of software.
+Neural Magic has open-sourced pre-sparsified versions of YOLOv5 models, making it easy to reach the performance of 
+hardware accelerators in the object detection domain.
 
 ### **Benchmarking DeepSparse's Performance**
 
-To give you a sense of runtime's exceptional performance, the DeepSparse package convienent benchmarking script 
+To give you a sense of runtime's exceptional performance, the DeepSparse package contains a convienent benchmarking script 
 that enables you to quickly test throughput. DeepSparse is also integrated with [SparseZoo](https://sparsezoo.neuralmagic.com/), 
 an open-source repository of pre-sparsified models, enabling you to quickly download models for testing.
 
-Let's compare DeepSparse's performance to ONNX Runtime to demonstrate the performance speedup.
-
-The following benchmarks were run on a GCP n2-highcpu-16 instance (8 cores).
+The following benchmarks were run on an AWS `c6i.8xlarge` instance (16 cores).
 
 #### **ONNX Runtime Dense Performance Baseline**
+
+Let's checkout ONNX Runtime's performance to generate a baseline.
 
 Run the following to pull down the dense version of YOLOv5-s from SparseZoo and compute throughput
 for ONNX Runtime with batch-size 64.
@@ -66,12 +66,17 @@ for ONNX Runtime with batch-size 64.
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 64 -e onnxruntime
 
-#
-#
-#
+# Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none
+# Batch Size: 64
+# Scenario: sync
+# Throughput (items/sec): 41.3004
+# Latency Mean (ms/batch): 1548.2591
+# Latency Median (ms/batch): 1547.9347
+# Latency Std (ms/batch): 2.5794
+# Iterations: 7
 ```
 
-We can see ONNX Runtime achieves XXX items/second.
+We can see ONNX Runtime achieves 41 items/second.
 
 #### **DeepSparse Sparse Performance**
 
@@ -81,12 +86,17 @@ throughput for DeepSparse with batch-size 64.
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94 -s sync -b 64 -e deepsparse
 
-#
-#
-#
+# Original Model Path: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
+# Batch Size: 64
+# Scenario: sync
+# Throughput (items/sec): 271.9079
+# Latency Mean (ms/batch): 235.3557
+# Latency Median (ms/batch): 235.3323
+# Latency Std (ms/batch): 0.6422
+# Iterations: 43
 ```
 
-We can see DeepSparse achieves XXX items/second. This is an XXX performance gain over ORT!
+We can see DeepSparse achieves 272 items/second. This is an **6.7x performance gain over ORT**!
 
 ### **Deploying YOLOv5-s with DeepSparse**
 
@@ -96,18 +106,15 @@ DeepSparse into an application.
 DeepSparse offers both a Pipeline and Server API, enabling you to add DeepSparse to a Python application
 or to spin up a model service endpoint. In the case of YOLOv5, DeepSparse has pre-made pipelines
 which wrap model inference with pre-processing and post-processing, such that you can pass raw images 
-to DeepSparse and recieve the post-processed output.
+to DeepSparse and recieve the predicted bounding boxes and classes.
 
 In our case, we will setup a model service endpoint with DeepSparse Server.
 
 #### **Launching DeepSparse Server**
 
-DeepSparse Server is built on the FastAPI and Uvicorn. 
-
 DeepSparse Server is launched as a CLI command and is configured with a YAML file. The following YAML file
 launches a object detection endpoint with DeepSparse running a pruned-quantized version of YOLOv5-s trained
-on COCO (identified by the SparseZoo stub below). At current, we only log system metrics (such as request latency)
-to standard output.
+on COCO (identified by the SparseZoo stub).
 
 ```yaml
 ## server-config-no-roboflow-logging.yaml
@@ -136,7 +143,6 @@ Download and unzip a dataset of soccer games from Roboflow Universe:
 curl -L "https://universe.roboflow.com/ds/YZbicMV8Z4?key=WrbJD7E7Ky" > roboflow.zip; unzip roboflow.zip; rm roboflow.zip
 ```
 
-Visit `http://localhost:5543/docs` to see the routes exposed by the DeepSparse Server. 
 The following uses the Python `request` package to send a raw image to the `yolov5-s-coco/predict/from_files` route.
 We can see that the response includes the bounding boxes, the classes, and the scores.
 
@@ -154,14 +160,9 @@ resp = requests.post(
 print(json.loads(resp.text))
 ```
 
-#### **Additional Resources**
-
-- Checkout [Neural Magic's YOLOv5s Documentation](https://docs.neuralmagic.com/use-cases/object-detection/deploying) for more details on deploying YOLOv5s with DeepSparse
-- Checkout [Neural Magic's DeepSparse Server Documentation](https://docs.neuralmagic.com/user-guide/deploying-deepsparse/deepsparse-server) for more details DeepSparse Server
-
 ## **Step 2: Log Production Data To Roboflow**
 
-Now that we have DeepSparse Server up and running, let's configure DeepSparse to log data to Roboflow.
+Now that we have DeepSparse Server up and running, let's configure DeepSparse to log incoming images to Roboflow.
 
 ### **Set Up a Roboflow Project**
 
@@ -209,7 +210,7 @@ class RoboflowLogger(BaseLogger):
 
 ### **Configure DeepSparse Server to Use the Roboflow Logger**
 
-With the `RoboflowLogger` created, let's update the Server configuration to use it with the pipeline inputs. 
+With the `RoboflowLogger` created, let's update the Server configuration to log the pipeline inputs to Roboflow. 
 Fill in your Roboflow dataset name (you can see it in the URL of the Roboflow project you created)
 and your [Roboflow API Key](https://docs.roboflow.com/rest-api#obtaining-your-api-key).
 
@@ -229,14 +230,12 @@ endpoints:
     data_logging:
       pipeline_inputs:
         - func: identity
-          frequency: 1
+          frequency: 1 # logs every image
           target_loggers:
             - roboflow_logger
 ```
 
-`server-config-roboflow-logging.yaml` instructs DeepSparse to instantiate a `RoboflowLogger` from the `roboflow-logger.py` file with your `api_key` and `dataset_name`. Then, the `data_logging` configruation instructs DeepSparse to call `RoboflowLogger.log()` on the Pipeline Inputs.
-
-For more details on DeepSparse Logging syntax, [checkout the documentation](https://docs.neuralmagic.com/user-guide/deepsparse-engine/logging).
+> For more details on configuration syntax, [checkout the DeepSparse Logging documentation](https://docs.neuralmagic.com/user-guide/deepsparse-engine/logging).
 
 We are now ready to start collecting data!
 
@@ -270,7 +269,7 @@ You should see the image ready to be annotated in Roboflow!
 
 #### **Simulating Production**
 
-Let's simulate a production setting where we collect data from many client requests.The following script loops through the soccer images we downloaded from the Roboflow Universe. 
+Let's simulate a production setting where we collect data from many client requests.The following script loops through the soccer images we downloaded from the Roboflow Universe and sends them to the DeepSparse Server.
 
 ```python
 import requests, json, os, time
