@@ -372,6 +372,8 @@ Once the 663 images have been uploaded, Roboflow provides the option to perform 
 
 Your dataset is ready for training!
 
+https://docs.roboflow.com/command-line-interface#upload-images-using-the-roboflow-cli
+
 ## **Step 4: Re-train the Model on Production Data**
 
 In this step, we will use Neural Magic's SparseML and Roboflow's Datasets API to train a sparsified YOLOv5 onto the
