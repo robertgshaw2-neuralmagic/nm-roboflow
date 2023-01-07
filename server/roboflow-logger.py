@@ -1,18 +1,20 @@
-from deepsparse.loggers import BaseLogger, MetricCategories
-from typing import Any, Optional
-from PIL import Image
-import io, requests, datetime
+from deepsparse.loggers import BaseLogger, MetricsCategories
+import typing, PIL, io, requests, datetime
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 class RoboflowLogger(BaseLogger):
+    
+    # the arguments to the construction will be defined in the config file
     def __init__(self, dataset_name: str, api_key: str):
+        # per Roboflow docs
         self.upload_url = f"https://api.roboflow.com/dataset/{dataset_name}/upload?api_key={api_key}"
         super(RoboflowLogger, self).__init__()
-
-    def log(self, identifier: str, value: Any, category: Optional[str]=None):
-        if category == MetricCategories.DATA:
+    
+    # this function will be called from DeepSparse Server, based on the config
+    def log(self, identifier: str, value: typing.Any, category: typing.Optional[str]=None):
+        if category == MetricsCategories.DATA:
             # unpacks value and converts to image in a buffer          
-            img = Image.fromarray(value.images[0], mode="RGB")
+            img = PIL.Image.fromarray(value.images[0], mode="RGB")
             buffered = io.BytesIO()
             img.save(buffered, quality=90, format="JPEG")
             
@@ -22,5 +24,5 @@ class RoboflowLogger(BaseLogger):
 
             # uploads to roboflow
             r = requests.post(self.upload_url, data=m, headers={'Content-Type': m.content_type})
-
-            print("request complete")
+            
+            print("request_complete)
