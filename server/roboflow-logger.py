@@ -1,4 +1,4 @@
-from deepsparse.loggers import BaseLogger, MetricsCategories
+from deepsparse.loggers import BaseLogger, MetricCategories
 import typing, PIL, io, requests, datetime
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
@@ -12,7 +12,7 @@ class RoboflowLogger(BaseLogger):
     
     # this function will be called from DeepSparse Server, based on the config
     def log(self, identifier: str, value: typing.Any, category: typing.Optional[str]=None):
-        if category == MetricsCategories.DATA:
+        if category == MetricCategories.DATA:
             # unpacks value and converts to image in a buffer          
             img = PIL.Image.fromarray(value.images[0], mode="RGB")
             buffered = io.BytesIO()
