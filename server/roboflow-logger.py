@@ -25,4 +25,4 @@ class RoboflowLogger(BaseLogger):
             # uploads to roboflow
             r = requests.post(self.upload_url, data=m, headers={'Content-Type': m.content_type})
             
-            print("request_complete)
+            print("request_complete")
