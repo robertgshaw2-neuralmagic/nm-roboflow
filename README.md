@@ -1,7 +1,6 @@
 # **Neural Magic + Roboflow**
 
-Neural Magic's DeepSparse is more than just the fastest deep learning inference runtime on CPUs - it also makes it 
-easy to manage your models in production. 
+DeepSparse is more than the fastest deep learning inference runtime on CPUs - it also simplifies management of your production models. 
 
 [DeepSparse Logging](https://docs.neuralmagic.com/user-guide/deepsparse-engine/logging), for instance, 
 can be integrated with Roboflow to create a Continual Learning System.  
@@ -14,9 +13,8 @@ in the computer vision space, input images will look very different on a sunny d
 Since deep learning models are trained and validated on a snapshot of data, models can become stale as the distribution of inputs
 shifts away from the data upon which the model was trained and validated ... often leading to poor performance in production.
 
-In order to combat these challenges, operations teams responsible for production models can adopt a **Continual Learning** mindset,
-where model performance is continually monitored, new data is continually gathered and labeled, and new versions of the model arte continually
-trained. 
+In order to combat these challenges, operations teams can adopt a **Continual Learning** mindset, where model performance is continually monitored, new 
+data from production is continually gathered and labeled, and new versions of the model are continually trained. 
 
 The workflow looks like this:
 
@@ -29,8 +27,8 @@ for more details.
 
 ## **Tutorial Overview**
 
-This example will demonstrate how to setup the Continual Learning system with Neural Magic and Roboflow
-to train an object detection model (YOLOv5-s) to detect soccer players in video clips.
+This example will demonstrate how to setup a Continual Learning system with Neural Magic and Roboflow
+to train YOLOv5-s to detect soccer players in video clips.
 
 There are 5 steps:
 1. Deploy a YOLOv5-s model trained on COCO with DeepSparse
@@ -64,8 +62,7 @@ The following benchmarks were run on an AWS `c6i.8xlarge` instance (16 cores).
 
 Let's checkout ONNX Runtime's performance to generate a baseline.
 
-Run the following to pull down the standard version of YOLOv5s from SparseZoo and compute throughput for ONNX Runtime with batch-size 32.
-
+Run the following to compute ORT's performance on standard, dense YOLOv5s at batch 32.
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/base-none -s sync -b 32 -nstreams 1 -e onnxruntime
 
@@ -79,9 +76,7 @@ We can see ONNX Runtime achieves 42 items/second.
 
 #### **DeepSparse Sparse Performance**
 
-Run the following to pull down a pruned-quantized version of YOLOv5-s from SparseZoo and compute
-throughput for DeepSparse with batch-size 32.
-
+Run the following to compute DeepSparse's throughput on a pruned-quantized YOLOv5s at batch 32.
 ```bash
 deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none -s sync -b 32 -nstreams 1
 
@@ -91,7 +86,7 @@ deepsparse.benchmark zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65
 # Throughput (items/sec): 241.2452
 ```
 
-We can see DeepSparse achieves 241 items/second. This is an **5.8x performance gain over ORT**!
+We can see DeepSparse achieves 241 items/second. ***This is an 5.8x performance gain over ORT!***
 
 ### **Deploying YOLOv5-s with DeepSparse**
 
@@ -159,7 +154,7 @@ Now that we have DeepSparse Server up and running, let's configure DeepSparse to
 First, create a free account with [Roboflow](https://roboflow.com/) and create a new project.
 
 <p align="center">
-    <img width=70% src="images/create-project.png">
+    <img width=80% src="images/create-project.png">
 </p>
 
 ### **Create a Custom Roboflow Logger for DeepSparse**
@@ -168,9 +163,9 @@ First, create a free account with [Roboflow](https://roboflow.com/) and create a
 at each stage of an inference pipeline to the logging system of your choice. DeepSparse has pre-made integrations with 
 common monitoring stacks like Prometheus/Grafana, but also allows you to create custom loggers.
 
-`roboflow-logger.py` shows how to create a custom logger (inheriting from the `BaseLogger` abstract class) which uses 
-Roboflow's [Upload API](https://docs.roboflow.com/adding-data/upload-api#uploading-with-multipart-form-data-recommended) to log images to
-a Roboflow dataset.
+`roboflow-logger.py` shows how to create a custom logger by inheriting from the `BaseLogger` abstract class and implementing the 
+`log` methods to uses Roboflow's [Upload API](https://docs.roboflow.com/adding-data/upload-api#uploading-with-multipart-form-data-recommended) to send 
+images to a Roboflow dataset.
 
 ```python
 from deepsparse.loggers import BaseLogger, MetricsCategories
@@ -178,11 +173,14 @@ import typing, PIL, io, requests, datetime
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 class RoboflowLogger(BaseLogger):
+    
+    # the arguments to the construction will be defined in the config file
     def __init__(self, dataset_name: str, api_key: str):
         # per Roboflow docs
         self.upload_url = f"https://api.roboflow.com/dataset/{dataset_name}/upload?api_key={api_key}"
         super(RoboflowLogger, self).__init__()
-
+    
+    # this function will be called from DeepSparse Server, based on the config
     def log(self, identifier: str, value: typing.Any, category: typing.Optional[str]=None):
         if category == MetricsCategories.DATA:
             # unpacks value and converts to image in a buffer          
@@ -228,7 +226,7 @@ endpoints:
             - roboflow_logger
 ```
 
-> For more details on configuration syntax, [checkout the DeepSparse Logging documentation](https://docs.neuralmagic.com/user-guide/deepsparse-engine/logging).
+> [Checkout the DeepSparse Logging documentation for more details on the Logging Syntax](https://docs.neuralmagic.com/user-guide/deepsparse-engine/logging).
 
 We are now ready to start collecting data!
 
@@ -257,7 +255,7 @@ print(json.loads(resp.text))
 You should see the image ready to be annotated in Roboflow!
 
 <p align="center">
-    <img width=70% src="images/uploaded-image.png">
+    <img width=80% src="images/uploaded-image.png">
 </p>
 
 #### **Simulating Production**
@@ -312,7 +310,7 @@ time for the purposes of this demo.*
 Now that the unlabled images are in Roboflow, navigate to the Annotate tab in your Project on the Web UI.
 
 <p align="center">
-  <img width="70%" src="images/labeling.png">
+  <img width="80%" src="images/labeling.png">
 </p>
 
 First, follow the prompts to assign the unlabeled images to a user (likely yourself).
@@ -324,47 +322,44 @@ Then, use the web UI to add bounding boxes to the images with the following four
 4. referee
 
 <p align="center">
-  <img width="70%" src="images/labeling.png">
+  <img width="80%" src="images/labeling.png">
 </p>
 
 Finally, once you have labeled all of the images, add them to the dataset, splitting between Train, Test, and Validation.
 
 <p align="center">
-  <img width="70%" src="images/add-to-dataset.png">
+  <img width="80%" src="images/add-to-dataset.png">
 </p>
 
 Once the 663 images have been uploaded, Roboflow provides the option to perform pre-processing, augmentation, and generation to the dataset.
 In our case, we will train with images of size 640x640, so leave all of the default options in place.
 
 <p align="center">
-  <img width="70%" src="images/upload-preprocessing.png">
+  <img width="80%" src="images/upload-preprocessing.png">
 </p>
 
 Your dataset is ready for training!
 
 ### **Shortcut: Uploading Labeled Images From Roboflow Universe**
 
-As mentioned above, the [dataset we are using has labels in the Roboflow Universe](https://universe.roboflow.com/roboflow-jvuqo/football-players-detection-3zvbc/dataset/2), so we can skip the manual labeling for the purposes of this demo.
+The dataset we are using has labels in the [Roboflow Universe](https://universe.roboflow.com/roboflow-jvuqo/football-players-detection-3zvbc/dataset/2), so we can skip the manual labeling for the purposes of this demo.
 
-Run the following to download the data with labels in the YOLOv5 format:
+Download the data with labels in the YOLOv5 format:
 ```bash
 mkdir data-with-labels; cd data-with-labels; curl -L "https://universe.roboflow.com/ds/YZbicMV8Z4?key=WrbJD7E7Ky" > roboflow.zip; unzip roboflow.zip; rm roboflow.zip
 ```
-
-We will use the Roboflow CLI to upload the data to your project.
 
 Install the Roboflow CLI with `npm`.
 ```
 npm i -g roboflow-cli
 ```
 
-Authenticate to your project. This will open up a web page with your API key. Follow the prompts to authenticate.
+Authenticate to Roboflow (follow the prompts on the webpage).
 ```
 roboflow auth
 ```
 
 Import the dataset to your project.
-
 ```
 roboflow import data-with-labels/
 ```
@@ -374,10 +369,12 @@ Open your project on the Roboflow web app
 roboflow open
 ```
 
-Once you navigate to your project, you should see he 663 images. Roboflow provides the option to perform pre-processing, augmentation, and generation to the dataset. In our case, we will train with images of size 640x640, so leave all of the default options in place.
+Once you navigate to your project, you should see the 663 images! 
+
+Roboflow provides the option to perform pre-processing, augmentation, and generation to the dataset. In our case, we will train with images of size 640x640, so leave all of the default options in place.
 
 <p align="center">
-  <img width="70%" src="images/upload-preprocessing.png">
+  <img width="80%" src="images/upload-preprocessing.png">
 </p>
 
 Your dataset is ready for training!
@@ -387,8 +384,8 @@ Your dataset is ready for training!
 In this step, we will use Neural Magic's SparseML and Roboflow's Datasets API to train a sparse version of YOLOv5 with the
 data we gathered from production.
 
-We have provided a [Colab Notebook](https://colab.research.google.com/drive/1e0zE6vGokh8LuXpDWhTzm-nelTHlrrFU#scrollTo=iHWjewb5FRsL)
-withe full end-to-end training flow.
+We have provided a [Colab Notebook](https://colab.research.google.com/drive/1e0zE6vGokh8LuXpDWhTzm-nelTHlrrFU)
+with the full end-to-end training flow.
 
 ### **Download Data From Roboflow to Your Training Enviornment**
 
@@ -399,13 +396,12 @@ Make sure the CLI is installed.
 npm i -g roboflow-cli
 ```
 
-Authenticate to Roboflow.
+Authenticate to Roboflow (follow the prompts on the webpage).
 ```bash
 roboflow auth
 ```
 
-Download the dataset. Your URL should look something like `neural-magic/soccer-player-detection-gjrbw/2`.
-
+Download the dataset. Your $DATASET_URL should look something like `neural-magic/soccer-player-detection-gjrbw/2`.
 ```bash
 !roboflow download $DATASET_URL --format yolov5pytorch
 ```
@@ -426,24 +422,22 @@ SparseML is an open-source optimization library, developed by Neural Magic, whic
 One of the workflows enabled by SparseML is called Sparse Transfer Learning. Sparse Transfer Learning is similiar to typical transfer learning, except
 you start from a sparse checkpoint and maintain sparsity the sparsity structure of the network while the fine-tuning occures.
 
-SparseZoo contains sparse checkpoints for each version of YOLOv5, which can be referenced from SparseML.
+In the case of YOLOv5, SparseZoo contains sparse checkpoints for each version from N to X and SparseML is integrated with Ultralytics, so we can use a 
+familiar CLI script to launch training.
 
 #### **Kick Off Sparse Transfer Learning**
 
-SparseML is integrated with Ultralytics YOLOv5, so we can use a familiar CLI script to launch training. In addition to the
-typical YOLOv5 arguments, SparseML includes a `recipe` argument. Recipes are YAML files that encode the hyperparameters of the
-sparsity algorithms. In the case of Sparse Transfer Learning, the recipes instructs SparseML to maintain sparsity levels as the training occurs.
+The following script pulls down the pruned-quantized checkpoint for YOLOv5s and start fine-tuning onto the dataset we downloaded from Roboflow. 
 
-The following script pulls down the pruned-quantized checkpoint for YOLOv5s (`--weights` points to a SparseZoo stub)
-and the sparse transfer learning recipe for YOLOv5s (`--recipe` points to a SparseZoo stub) from SparseZoo and starts the training
-process with the dataset previously downloaded from Roboflow.
+You will note that in addition to the typical YOLOv5 arguments, SparseML adds a `recipe` argument. Recipes are YAML 
+files that encode the hyperparameters of the sparsity algorithms run by SparseML. The recipes provided are Sparse Transfer Learning recipes, which instruct SparseML to maintain sparsity levels as the training occurs.
 
 ```bash
 sparseml.yolov5.train \
   --weights zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none?recipe_type=transfer_learn \
   --recipe zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned65_quant-none?recipe_type=transfer_learn \
   --cfg "yolov5s.yaml" \
-  --data /content/neural-magic-soccer-player-detection-gjrbw-2-yolov5pytorch/data.yaml \
+  --data $DATASET_PATH/data.yaml \
   --cache 'ram'
 ```
 
@@ -458,23 +452,23 @@ Class     Images     Labels          P          R     mAP@.5 mAP@.5:.95
     3         38         89          1          0      0.117     0.0611
 ```
 
-The model has a hard time picking up on classes 0, 1, and 3 (ball, goalkeeper, and referee), but does a nice job of identifying the players (which make up most of the objects in the training set).
+The model has a hard time picking up on classes 0, 1, and 3 (ball, goalkeeper, and referee), but does a nice job of identifying the players!
 
 Pulling up the TensorBoard (`--logdir yolov5_runs/train`), we can see that sparsity levels (as seen in the `ParamPruning` group) remain flat for every layer of the model as the fine-tuning occured - SparseML is doing its job!
 
 <p align="center">
-  <img width="70%" src="images/param-pruning.png">
+  <img width="80%" src="images/param-pruning.png">
 </p>
 
 #### **Export to ONNX**
 
-DeepSparse accepts models in the ONNX format. Run the following to convert the final PyTorch checkpoint to ONNX.
-
+Run the following to convert the final PyTorch checkpoint to ONNX.
 ```
 sparseml.yolov5.export_onnx --weights yolov5_runs/train/exp/weights/last.pt --dynamic
 ```
 
-This creates an ONNX file representing the model at `yolov5_runs/train/exp/weights/last.onnx`.
+This creates an ONNX file representing the model at `yolov5_runs/train/exp/weights/last.onnx`. We will use 
+this file when we redeploy the model with DeepSparse.
 
 ## **Step 5: Redeploy the New Model**
 
@@ -506,44 +500,13 @@ Launch as before:
 deepsparse.server --config-file server/server-config-multiple-endpoints.yaml
 ```
 
-Send a request to the YOLOv5s model trained on COCO:
-
-```python
-import requests, json
-
-ENDPOINT_URL = "http://localhost:5543/yolov5-s-coco/predict/from_files"
-IMAGE_PATH = "test/images/4b770a_3_6_png.rf.f5d975605c1f73e1a95a1d8edc4ce5b1.jpg"
-
-resp = requests.post(
-  url=ENDPOINT_URL,
-  files=[('request', open(IMAGE_PATH, 'rb'))]
-)
-
-print(json.loads(resp.text))
-```
-
-Send a request to the YOLOv5s model fine-tuned on the production data:
-```python
-import requests, json
-
-ENDPOINT_URL = "http://localhost:5543/yolov5-s-finetuned/predict/from_files"
-IMAGE_PATH = "test/images/4b770a_3_6_png.rf.f5d975605c1f73e1a95a1d8edc4ce5b1.jpg"
-
-resp = requests.post(
-  url=ENDPOINT_URL,
-  files=[('request', open(IMAGE_PATH, 'rb'))]
-)
-
-print(json.loads(resp.text))
-```
-
-The following sends requests to the server and annotates the images with the bounding boxes, saving the output as files.
+The following sends a request to each model endpoint and annotates the images with the bounding boxes, saving the output as files.
 
 ```
 python client-multiple-endpoints.py
 ```
 
-We can see that the fine-tuned model does a better job than the off-the-shelf COCO trained model:
+We can see that the fine-tuned model does a better job than the off-the-shelf COCO trained model!
 
 YOLOv5s Trained on COCO        | YOLOv5s Finetuned on Production Data
 :-----------------------------:|:------------------------------------:
