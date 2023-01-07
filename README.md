@@ -2,16 +2,15 @@
 
 DeepSparse is more than the fastest deep learning inference runtime on CPUs - it also simplifies management of your production models. 
 
-[DeepSparse Logging](https://docs.neuralmagic.com/user-guide/deepsparse-engine/logging), for instance, 
-can be integrated with Roboflow to create a Continual Learning System.  
+Let's take a look at how [DeepSparse Logging](https://docs.neuralmagic.com/user-guide/deepsparse-engine/logging)
+can be integrated with Roboflow to create a Continual Learning system.  
 
 ## **What Is Continual Learning?**
 
-When deep learning models are deployed to production, the distribution of the incoming data will vary over time as the enviornment evolves. For example,
-in the computer vision space, input images will look very different on a sunny day versus on a rainy day.
+The distribution of the incoming data to your production model will vary over time as the enviornment evolves. For example input images to a YOLOv5 model will look very different on a sunny day versus on a rainy day.
 
-Since deep learning models are trained and validated on a snapshot of data, models can become stale as the distribution of inputs
-shifts away from the data upon which the model was trained and validated ... often leading to poor performance in production.
+Since models are trained and validated on a snapshot of data, they can become stale as the distribution of inputs
+shifts away from the data upon which the model was trained and validated ... ***often leading to poor accuracy in production***.
 
 In order to combat these challenges, operations teams can adopt a **Continual Learning** mindset, where model performance is continually monitored, new 
 data from production is continually gathered and labeled, and new versions of the model are continually trained. 
@@ -128,7 +127,7 @@ Download and unzip a dataset of soccer games from Roboflow Universe:
 curl -L "https://universe.roboflow.com/ds/YZbicMV8Z4?key=WrbJD7E7Ky" > roboflow.zip; unzip roboflow.zip; rm roboflow.zip
 ```
 
-The following uses the Python `request` package to send a raw image to the `yolov5-s-coco/predict/from_files` route.
+The Python `request` package can be used to send a raw image to the `yolov5-s-coco/predict/from_files` route.
 We can see that the response includes the bounding boxes, the classes, and the scores.
 
 ```python
@@ -143,6 +142,11 @@ resp = requests.post(
 )
 
 print(json.loads(resp.text))
+```
+
+Run the following:
+```
+python client-send-one.py
 ```
 
 ## **Step 2: Log Production Data To Roboflow**
@@ -163,9 +167,11 @@ First, create a free account with [Roboflow](https://roboflow.com/) and create a
 at each stage of an inference pipeline to the logging system of your choice. DeepSparse has pre-made integrations with 
 common monitoring stacks like Prometheus/Grafana, but also allows you to create custom loggers.
 
-`roboflow-logger.py` shows how to create a custom logger by inheriting from the `BaseLogger` abstract class and implementing the 
-`log` methods to uses Roboflow's [Upload API](https://docs.roboflow.com/adding-data/upload-api#uploading-with-multipart-form-data-recommended) to send 
+The `RoboflowLogger` is an example custom logger, created by inheriting from the `BaseLogger` abstract class and implementing the `log` method. Our 
+implementation uses [Roboflow's Upload API](https://docs.roboflow.com/adding-data/upload-api#uploading-with-multipart-form-data-recommended) to send 
 images to a Roboflow dataset.
+
+Below, we will configure DeepSparse to call this `log` method within the inference pipeline. 
 
 ```python
 from deepsparse.loggers import BaseLogger, MetricsCategories
@@ -200,10 +206,9 @@ class RoboflowLogger(BaseLogger):
 
 With the `RoboflowLogger` created, let's update the Server configuration to log the pipeline inputs to Roboflow.
 
-In the `loggers` section, we declare the `RoboflowLogger`, passing a local `path` to the file we defined above as well as 
-the arguments to the `__init__` function (`dataset_name` and `api_key`). You should update `server/server-config-roboflow-logging.yaml`
-with the your Roboflow dataset name (you can see it in the URL of the Roboflow project you created)
-and your [Roboflow API Key](https://docs.roboflow.com/rest-api#obtaining-your-api-key).
+In the `loggers` section, we declare the `RoboflowLogger`, passing a local path its definition in `roboflow-logger.py`
+the arguments to the constructor (`dataset_name` and `api_key`). You should update `server/server-config-roboflow-logging.yaml`
+with the your Roboflow dataset name and your [Roboflow API Key](https://docs.roboflow.com/rest-api#obtaining-your-api-key).
 
 ```yaml
 # server-config-roboflow-logging.yaml
@@ -237,19 +242,9 @@ Launch the Server with the new configuration file.
 deepsparse.server --config-file server/server-config-roboflow-logging.yaml
 ```
 
-Send a request to the Server as before.
-```python
-import requests, json
-
-ENDPOINT_URL = "http://localhost:5543/yolov5-s-coco/predict/from_files"
-IMAGE_PATH = "test/images/4b770a_3_6_png.rf.f5d975605c1f73e1a95a1d8edc4ce5b1.jpg"
-
-resp = requests.post(
-  url=ENDPOINT_URL,
-  files=[('request', open(IMAGE_PATH, 'rb'))]
-)
-
-print(json.loads(resp.text))
+Send a request to the Server as before:
+```
+python client-send-one.py
 ```
 
 You should see the image ready to be annotated in Roboflow!
@@ -417,20 +412,16 @@ You are ready to train!
 
 ### **Train a Sparse YOLOv5 with SparseML**
 
-SparseML is an open-source optimization library, developed by Neural Magic, which allows you to create sparse models trained on your dataset.
+SparseML is an open-source optimization library which allows you to create sparse models trained on your dataset. One of the workflows enabled by 
+SparseML is called Sparse Transfer Learning, which is similiar to typical transfer learning, except
+you start from a sparse checkpoint and maintain the sparsity structure of the network while the fine-tuning occures.
 
-One of the workflows enabled by SparseML is called Sparse Transfer Learning. Sparse Transfer Learning is similiar to typical transfer learning, except
-you start from a sparse checkpoint and maintain sparsity the sparsity structure of the network while the fine-tuning occures.
-
-In the case of YOLOv5, SparseZoo contains sparse checkpoints for each version from N to X and SparseML is integrated with Ultralytics, so we can use a 
+SparseZoo contains sparse checkpoints for each version of YOLOv5 from N to X and SparseML is integrated with Ultralytics, so we can use a 
 familiar CLI script to launch training.
 
 #### **Kick Off Sparse Transfer Learning**
 
-The following script pulls down the pruned-quantized checkpoint for YOLOv5s and start fine-tuning onto the dataset we downloaded from Roboflow. 
-
-You will note that in addition to the typical YOLOv5 arguments, SparseML adds a `recipe` argument. Recipes are YAML 
-files that encode the hyperparameters of the sparsity algorithms run by SparseML. The recipes provided are Sparse Transfer Learning recipes, which instruct SparseML to maintain sparsity levels as the training occurs.
+Run the following to pull down the pruned-quantized YOLOv5s checkpoint and start fine-tuning. The `--recipe` argument points to a YAML file in SparseZoo that instruct SparseML to maintain sparsity levels as the training occurs.
 
 ```bash
 sparseml.yolov5.train \
@@ -516,4 +507,4 @@ YOLOv5s Trained on COCO        | YOLOv5s Finetuned on Production Data
 
 You have successfully created a data flywheel for continual learning with DeepSparse and Roboflow!
 
-**Interested In Deploying DeepSparse To Production?** [Start your 90 day free trial!](https://neuralmagic.com/deepsparse-free-trial/).
+**Interested In Deploying DeepSparse To Production? [Start your 90 day free trial!](https://neuralmagic.com/deepsparse-free-trial/)**
